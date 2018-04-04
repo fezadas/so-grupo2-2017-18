@@ -34,7 +34,7 @@ void rotate(Data* data, int vertical) {
 		RGBTRIPLE* start = (RGBTRIPLE*)(px);
 		for (int column = 0; column < width; column++) {
 			for (int line = 0, end=height-1; line < height/2;end--, line++) {
-				RGBTRIPLE temp = start[line*width + column];
+				RGBTRIPLE temp = start[line*width + column];					//
 				start[line * width + column] = start[end*width + column];
 				start[end*width + column] = temp;
 			}
@@ -186,17 +186,4 @@ terminate:
 	if (hSrc != INVALID_HANDLE_VALUE) CloseHandle(hSrc);
 	if (hDst != INVALID_HANDLE_VALUE) CloseHandle(hDst);
 	return error;
-}
-
-
-
-int _tmain(int argc, _TCHAR* argv[])
-{
-	if (argc != 4) {
-		_tprintf(_T("Usage: copyfile <src> <dst> <1-vertical/0-horizontal>\n"));
-		return 1;
-	}
-	Data data;
-	fileMapping(&data, argv[1], argv[2], (int)(argv[3]) - '0');
-	return 1;
 }
