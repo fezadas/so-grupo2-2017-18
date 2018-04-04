@@ -32,38 +32,25 @@ void rotate(Data* data, int vertical) {
 	PBYTE px = data->dstView + bitMapFileHeader->bfOffBits;
 	if (vertical) {
 		RGBTRIPLE* start = (RGBTRIPLE*)(px);
-		//RGBTRIPLE* end = (RGBTRIPLE*)(px + (((width + padding) * sizeof(RGBTRIPLE))* (height - line) - ((width) * sizeof(RGBTRIPLE))));
 		for (int column = 0; column < width; column++) {
 			for (int line = 0, end=height-1; line < height/2;end--, line++) {
-				RGBTRIPLE temp = start[end*width + column];
+				RGBTRIPLE temp = start[line*width + column];
 				start[line * width + column] = start[end*width + column];
 				start[end*width + column] = temp;
 			}
 		}
-		//ensure that I am in a multiple address of four, otherwise we can get wrong memory infomation
-
 	}
 	else {
 		for (int line = 0; line < height; line++) {
-			//
 			RGBTRIPLE* pixelsData = (RGBTRIPLE*)(px);
-			//index k starts in the last pixel of the first line
-			//index j starts in the first pixel of the first line
-			//then we increment j and decrement k, swapping their positions
 			for (int column = 0, lastColumn = width - 1; column < width; column++, lastColumn--) {
-				//already swap all pixels from current line, still need to increment px pointer
 				if (lastColumn > column) {
-					//RBGTriple swap
 					RGBTRIPLE temp = pixelsData[column];
 					pixelsData[column] = pixelsData[lastColumn];
 					pixelsData[lastColumn] = temp;
 				}
-				//increment sizeof(RGBTriple) in order to go to the next pixel
 				px += sizeof(RGBTRIPLE);
 			}
-			//ensure that I am in a multiple address of four, otherwise we can get wrong memory infomation
-			//px += padding;
-
 		}
 
 	}
