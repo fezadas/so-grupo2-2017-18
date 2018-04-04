@@ -1,4 +1,7 @@
 #include "stdafx.h"
+#include <Windows.h>
+#include <wingdi.h>
+
 
 typedef struct data {
 	HANDLE srcFile;
@@ -27,25 +30,18 @@ void rotate(Data* data, int vertical) {
 	//because the information is in addresses multiple of four
 	int padding = (4 - ((width * sizeof(RGBTRIPLE) % 4)) % 4);
 	PBYTE px = data->dstView + bitMapFileHeader->bfOffBits;
-	PBYTE pxAux = px;
 	if (vertical) {
-		for (int line = 0; line < height/2; line++) {
-			//
-			RGBTRIPLE* start = (RGBTRIPLE*)(px);
-			RGBTRIPLE* end = (RGBTRIPLE*)(px + (((width+padding) * sizeof(RGBTRIPLE))* (height - line) - ((width) * sizeof(RGBTRIPLE))));
-			//RGBTRIPLE* end = (RGBTRIPLE*)(pxAux +(((width)*(height-line))*sizeof(RGBTRIPLE))); 
-			for (int column = 0; column < width; column++) {
-				//RBGTriple swap
-				RGBTRIPLE temp = start[column];
-				start[column] = end[column];
-				end[column] = temp;
-				px += sizeof(RGBTRIPLE);
+		RGBTRIPLE* start = (RGBTRIPLE*)(px);
+		//RGBTRIPLE* end = (RGBTRIPLE*)(px + (((width + padding) * sizeof(RGBTRIPLE))* (height - line) - ((width) * sizeof(RGBTRIPLE))));
+		for (int column = 0; column < width; column++) {
+			for (int line = 0, end=height-1; line < height/2;end--, line++) {
+				RGBTRIPLE temp = start[end*width + column];
+				start[line * width + column] = start[end*width + column];
+				start[end*width + column] = temp;
 			}
-			px += padding;
-			
 		}
 		//ensure that I am in a multiple address of four, otherwise we can get wrong memory infomation
-		
+
 	}
 	else {
 		for (int line = 0; line < height; line++) {
@@ -73,7 +69,7 @@ void rotate(Data* data, int vertical) {
 	}
 }
 
-int fileMapping(Data* fileData,LPCTSTR srcFile, LPCTSTR dstFile, int flag) {
+int fileMapping(Data* fileData, LPCTSTR srcFile, LPCTSTR dstFile, int flag) {
 
 	LARGE_INTEGER fileSize;
 	HANDLE hSrc = INVALID_HANDLE_VALUE, hDst = INVALID_HANDLE_VALUE;
@@ -172,10 +168,10 @@ int fileMapping(Data* fileData,LPCTSTR srcFile, LPCTSTR dstFile, int flag) {
 		}
 		offset.QuadPart += toTransfer;
 		remaining.QuadPart -= toTransfer;
-		
+
 		//saving handles and address from createFileMapping and MapViewOfFile
 		//in a struct in order to obtain that information later
-		
+
 		fileData->srcFile = hSrc;
 		fileData->dstFile = hDst;
 		fileData->srcMapping = MapSrc;
@@ -190,7 +186,7 @@ int fileMapping(Data* fileData,LPCTSTR srcFile, LPCTSTR dstFile, int flag) {
 		//now we can rotate the RGBTriple structs in our dst file, but first we need
 		//to add the offsetBits to dst address
 
-		rotate(fileData,1);
+		rotate(fileData, 1);
 
 		offset.QuadPart += toTransfer;
 		remaining.QuadPart -= toTransfer;
@@ -214,6 +210,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		return 1;
 	}
 	Data data;
-	fileMapping(&data,argv[1], argv[2],(int)(argv[3])-'0');
+	fileMapping(&data, argv[1], argv[2], (int)(argv[3]) - '0');
 	return 1;
 }
