@@ -19,7 +19,7 @@ VOID InitWaiterThreadFunc(UT_ARGUMENT arg) {
 	EVENT initDone;
 	printf("InitWaiterThreadFunc begin\n");
 	EventInit(&initDone, FALSE);
-	UtCreate(InitNotifierThreadFunc, &initDone, 8 * 4096, "");
+	UtCreate(InitNotifierThreadFunc, &initDone, 8 * 4096, L"");
 
 	UtYield();
 	printf("Wait for thread notification!\n");
@@ -31,7 +31,7 @@ VOID InitWaiterThreadFunc(UT_ARGUMENT arg) {
 }
 
 VOID InitSynchroTest() {
-	UtCreate(InitWaiterThreadFunc, NULL,8*4096,"");
+	UtCreate(InitWaiterThreadFunc, NULL,8*4096,L"");
 	UtRun();
 }
 
