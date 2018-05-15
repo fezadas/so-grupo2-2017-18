@@ -136,6 +136,7 @@ VOID Schedule () {
 	NextThread = ExtractNextReadyThread();
 	if(RunningThread->State == Running)
 		RunningThread->State = Ready;
+
 	if (NextThread->ToTerminate) {
 		UtExit();
 		Schedule();
@@ -268,15 +269,18 @@ VOID UtActivate (HANDLE ThreadHandle) {
 	InsertTailList(&ReadyQueue, &(t)->Link);
 }
 
+
 VOID UtDump() {
 	PLIST_ENTRY curr = AliveThreads.Flink;
+	BYTE aux = 0;
 	while (curr != &AliveThreads) {
-		PUTHREAD thread = CONTAINING_RECORD(curr, UTHREAD, Link);
-		DWORD usedStack = (((DWORD)thread->Stack - (thread->ThreadContext->EDI))
-			               /thread->StackSize
-						  )*100;
+		PUTHREAD thread = CONTAINING_RECORD(curr, UTHREAD, AliveLink);
+		DWORD usedStack = 100 - (((thread == RunningThread ?
+									(DWORD)(&aux) :
+									(DWORD)(thread->ThreadContext)) - (DWORD)thread->Stack) * 100) / STACK_SIZE;
+		const char* state = UtStateArray[thread->State];
 		printf("Handle: %p | Thread Name: %s | State: %s | Stack Ocupation: %d \n",
-			  (HANDLE)thread, thread->Name, UtStateArray[thread->State], usedStack);
+			(HANDLE)thread, thread->Name, state, usedStack);
 		curr = curr->Flink;
 	}
 }
@@ -372,7 +376,7 @@ VOID __fastcall CleanupThread (PUTHREAD Thread) {
 // Creates a user thread to run the specified function. The thread is placed
 // at the end of the ready queue.
 //
-HANDLE UtCreate32 (UT_FUNCTION Function, UT_ARGUMENT Argument,DWORD StackSize, LPCTSTR Name) {
+HANDLE UtCreate32 (UT_FUNCTION Function, UT_ARGUMENT Argument,DWORD StackSize, const char* Name) {
 	PUTHREAD Thread;
 	
 	DWORD SIZE = StackSize > 0 ? StackSize : STACK_SIZE;
@@ -389,7 +393,8 @@ HANDLE UtCreate32 (UT_FUNCTION Function, UT_ARGUMENT Argument,DWORD StackSize, L
 	//
 	// Zero the stack for emotional confort.
 	//
-	memset(Thread->Stack, 0, STACK_SIZE);
+	memset(Thread->Stack, 0, SIZE);
+	UState state = UState::Ready;
 
 	//
 	// Memorize Function and Argument for use in InternalStart.
@@ -398,7 +403,7 @@ HANDLE UtCreate32 (UT_FUNCTION Function, UT_ARGUMENT Argument,DWORD StackSize, L
 	Thread->Argument = Argument;
 	Thread->StackSize = SIZE;
 	Thread->State = Ready;
-	Thread->Name = Name;
+	Thread->Name = strdup(Name);
 	Thread->ToTerminate = FALSE;
 	//
 	// Map an UTHREAD_CONTEXT instance on the thread's stack.
@@ -445,10 +450,8 @@ HANDLE UtCreate32 (UT_FUNCTION Function, UT_ARGUMENT Argument,DWORD StackSize, L
 	Thread->ThreadContext->EBP = 0x00000000;									  
 	Thread->ThreadContext->RetAddr = InternalStart;
 
-
 	// Add to active list
 	InsertTailList(&AliveThreads, &Thread->AliveLink);
-
 
 	// Initialize Joiners list
 	InitializeListHead(&Thread->Joiners);

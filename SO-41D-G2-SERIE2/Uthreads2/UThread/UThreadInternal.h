@@ -53,8 +53,8 @@ typedef struct _UTHREAD_CONTEXT_32 {
 #endif
 
 typedef enum UState {
-	Running, Ready, Blocked
-}UState;
+	Running = 0, Ready = 1, Blocked = 2
+}UState, *PUState;
 
 const char* UtStateArray[3] = { "Running","Ready","Blocked" };
 
@@ -74,15 +74,15 @@ typedef struct _UTHREAD {
 	PUTHREAD_CONTEXT ThreadContext;
 	LIST_ENTRY       Link;
 	LIST_ENTRY		 AliveLink;
+	BOOLEAN			 ToTerminate;
 	UT_FUNCTION      Function;   
 	UT_ARGUMENT      Argument; 
 	LIST_ENTRY		 Joiners;
 	UState           State;
-	LPCTSTR			 Name;
+	const char*		 Name;
 	DWORD            CountJoiners;
 	DWORD            StackSize;
 	PUCHAR           Stack;
-	BOOLEAN			 ToTerminate;
 } UTHREAD, *PUTHREAD;
 
 

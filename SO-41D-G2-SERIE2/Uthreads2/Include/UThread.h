@@ -63,7 +63,7 @@ VOID UtRun ();
 // Uncomment next line when build for x64
 
 UTHREAD_API
-HANDLE UtCreate32(UT_FUNCTION Function, UT_ARGUMENT Argument, DWORD StackSize, LPCTSTR Name);
+HANDLE UtCreate32(UT_FUNCTION Function, UT_ARGUMENT Argument, DWORD StackSize, const char* Name);
 
 //
 // Terminates the execution of the currently running thread. All associated

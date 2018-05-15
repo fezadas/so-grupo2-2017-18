@@ -42,7 +42,6 @@ int main()
 		//create pipe where child reads what father writes
 	if (!CreatePipe(&hChildRead, &hFatherWriteTemp, &sa, 0));
 		//DisplayError("CreatePipe");
-
 		/*
 								 ____________
 		FATHER WRITES	  --->  |            |	--->	CHILD READS FROM
@@ -50,6 +49,10 @@ int main()
 		(hWritePipe =hFatherWrite)                         (hReadPipe =hChildRead)
 
 		*/
+
+	if (!DuplicateHandle(GetCurrentProcess(), hChildRead,
+		GetCurrentProcess(), &hErrorWrite, 0,
+		TRUE, DUPLICATE_SAME_ACCESS));
 
 	if (!DuplicateHandle(GetCurrentProcess(), hFatherReadTemp,
 		GetCurrentProcess(),
@@ -78,19 +81,15 @@ int main()
 	hThread = CreateThread(NULL, 0, ReadFromConsoleAndWritePipe,
 		(LPVOID)hFatherWrite, 0, &ThreadId);
 
-
-	
+	ReadFromPipeAndWriteInConsole(hFatherRead);
 
 	// Force the read on the input to return by closing the stdin handle.
 	CloseHandle(hStdIn);
-
 
 	// Tell the thread to exit and wait for thread to die.
 	bRunThread = FALSE;
 
 	WaitForSingleObject(hThread, INFINITE);
-
-	ReadFromPipeAndWriteInConsole(hChildRead);
 
 	CloseHandle(hFatherRead);
 	CloseHandle(hFatherWrite);
@@ -178,13 +177,7 @@ DWORD WINAPI ReadFromConsoleAndWritePipe(LPVOID lpvThreadParam)
 	while (bRunThread)
 	{
 		ReadConsole(hStdIn, read_buff, 1, &dwRead, NULL);
-	
-		int c = 0;
-		while (read_buff[c] != '\0') {
-			printf("%c", read_buff[c]);
-			c++;
-		}
-		bool a = WriteFile(hPipeWrite, read_buff, dwRead, &dwRead, NULL);
+		WriteFile(hPipeWrite, read_buff, dwRead, &dwRead, NULL);
 		{
 			if (GetLastError() == ERROR_NO_DATA)
 				break; // Pipe was closed (normal exit path).
@@ -193,7 +186,3 @@ DWORD WINAPI ReadFromConsoleAndWritePipe(LPVOID lpvThreadParam)
 
 	return 1;
 }
-
-
-
-
