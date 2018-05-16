@@ -73,6 +73,13 @@ UTHREAD_API
 VOID UtExit ();
 
 //
+// Terminates the execution of the thread given as parameter. All associated
+// resources are released after call to CleanupThread.
+//
+UTHREAD_API
+VOID UtExitT(HANDLE thread);
+
+//
 // Relinquishes the processor to the first user thread in the ready queue.
 // If there are no ready threads, the function returns immediately.
 //

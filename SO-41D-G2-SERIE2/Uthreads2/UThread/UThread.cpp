@@ -138,7 +138,7 @@ VOID Schedule () {
 		RunningThread->State = Ready;
 
 	if (NextThread->ToTerminate) {
-		UtExit();
+		UtExitT(NextThread);
 		Schedule();
 	}
 	else {
@@ -265,9 +265,12 @@ VOID UtDeactivate() {
 //
 VOID UtActivate (HANDLE ThreadHandle) {
 	PUTHREAD t = (PUTHREAD)ThreadHandle;
-	if (t->ToTerminate) UtExit();
-	t->State = Ready;
-	InsertTailList(&ReadyQueue, &(t)->Link);
+	if (t->ToTerminate)
+		UtExitT(t);
+	else {
+		t->State = Ready;
+		InsertTailList(&ReadyQueue, &(t)->Link);
+	}
 }
 
 
@@ -370,6 +373,20 @@ VOID __fastcall CleanupThread (PUTHREAD Thread) {
 	free(Thread);
 }
 
+VOID UtExitT(HANDLE thread) {
+	PUTHREAD pThread = (PUTHREAD)thread;
+	NumberOfThreads -= 1;
+	RemoveEntryList(&pThread->AliveLink);
+	// awake joined threads
+	while (!IsListEmpty(&pThread->Joiners)) {
+		PLIST_ENTRY tlink = RemoveHeadList(&pThread->Joiners);
+		PNODE node = CONTAINING_RECORD(tlink, NODE, Link);
+		PUTHREAD thread = (PUTHREAD)node->Thread;
+		if (--(thread->CountJoiners) == 0)
+			UtActivate(thread);
+	}
+	CleanupThread(pThread);
+}
 
 //
 // functions with implementation dependent of X86 or x64 platform
