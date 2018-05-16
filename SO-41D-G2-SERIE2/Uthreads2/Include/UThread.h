@@ -65,6 +65,12 @@ VOID UtRun ();
 UTHREAD_API
 HANDLE UtCreate32(UT_FUNCTION Function, UT_ARGUMENT Argument, DWORD StackSize, const char* Name);
 
+typedef enum UState {
+	Running = 0, Ready = 1, Blocked = 2
+}UState, *PUState;
+
+const char* UtStateArray[3] = { "Running","Ready","Blocked" };
+
 //
 // Terminates the execution of the currently running thread. All associated
 // resources are released after the context switch to the next ready thread.
@@ -113,6 +119,9 @@ BOOL UtJoin(HANDLE ThreadHandle);
 
 UTHREAD_API
 DWORD UtGetCount(HANDLE ThreadHandle);
+
+UTHREAD_API
+UState UtGetState(HANDLE);
 
 UTHREAD_API
 BOOL UtMultiJoin(HANDLE handle[], int size);

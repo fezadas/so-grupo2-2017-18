@@ -345,6 +345,11 @@ DWORD UtGetCount(HANDLE hThread) {
 	return thread->CountJoiners;
 }
 
+UState UtGetState(HANDLE hThread) {
+	PUTHREAD thread = (PUTHREAD)hThread;
+	return thread->State;
+}
+
 // new functions
 /*
 BOOL UtJoin(HANDLE hthread) {

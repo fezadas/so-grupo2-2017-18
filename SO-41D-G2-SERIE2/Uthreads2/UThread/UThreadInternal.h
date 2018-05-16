@@ -52,12 +52,6 @@ typedef struct _UTHREAD_CONTEXT_32 {
 #define UTHREAD_CONTEXT UTHREAD_CONTEXT_32
 #endif
 
-typedef enum UState {
-	Running = 0, Ready = 1, Blocked = 2
-}UState, *PUState;
-
-const char* UtStateArray[3] = { "Running","Ready","Blocked" };
-
 //
 // The descriptor of a user thread, containing an intrusive link (through which
 // the thread is linked in the ready queue), the thread's starting function and
