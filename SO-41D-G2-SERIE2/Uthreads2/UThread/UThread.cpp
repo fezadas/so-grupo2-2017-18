@@ -218,12 +218,13 @@ VOID UtExit() {
 	RemoveEntryList(&RunningThread->AliveLink);
 
 	// awake joined threads
-	while (!IsListEmpty(&RunningThread->Joiners)) {
+	while (!IsListEmpty((&RunningThread->Joiners))) {
 		PLIST_ENTRY tlink = RemoveHeadList(&RunningThread->Joiners);
 		//decrementar o valor de countJoiners da thread main e verificar se tem o valor zero
 		PNODE node = CONTAINING_RECORD(tlink, NODE, Link);
 		PUTHREAD thread = (PUTHREAD)node->Thread;
-		if(--(thread->CountJoiners) == 0)
+		--thread->CountJoiners;
+		if(thread->CountJoiners == 0)
 			UtActivate(thread);
 	}
 
@@ -286,7 +287,7 @@ VOID UtDump() {
 }
 
 BOOL UtMultiJoin(HANDLE handle[], int size) {
-	NODE main;
+	PNODE n = (PNODE)malloc(sizeof(LIST_ENTRY)+sizeof(HANDLE));
 	HANDLE mainThread = UtSelf();
 	for (int i = 0; i < size; i++) {
 		HANDLE h = handle[i];
@@ -294,7 +295,6 @@ BOOL UtMultiJoin(HANDLE handle[], int size) {
 			return false;
 		PUTHREAD t = (PUTHREAD)mainThread;
 		t->CountJoiners++;
-		PNODE n;
 		n->Thread = mainThread;
 		InsertTailList(&((PUTHREAD)h)->Joiners, &n->Link);
 	}
@@ -335,6 +335,11 @@ BOOL UtAlive(HANDLE hThread) {
 		curr = curr->Flink;
 	}
 	return FALSE;
+}
+
+DWORD UtGetCount(HANDLE hThread) {
+	PUTHREAD thread = (PUTHREAD)hThread;
+	return thread->CountJoiners;
 }
 
 // new functions
@@ -405,6 +410,8 @@ HANDLE UtCreate32 (UT_FUNCTION Function, UT_ARGUMENT Argument,DWORD StackSize, c
 	Thread->State = Ready;
 	Thread->Name = strdup(Name);
 	Thread->ToTerminate = FALSE;
+	Thread->CountJoiners = 0;
+	InitializeListHead(&Thread->Joiners);
 	//
 	// Map an UTHREAD_CONTEXT instance on the thread's stack.
 	// We'll use it to save the initial context of the thread.

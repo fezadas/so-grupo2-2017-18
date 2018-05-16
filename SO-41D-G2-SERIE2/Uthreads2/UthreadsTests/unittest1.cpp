@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "CppUnitTest.h"
-#include "../Include/UThread.h"
+#include "..\Include\UThread.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -21,7 +21,7 @@ namespace UthreadsTests
 
 		static VOID Func2(UT_ARGUMENT arg) {
 			PBOOL isAlive = (PBOOL)arg;
-			HANDLE hThread = UtCreate(Func2Aux, NULL, 8 * 4096, L"Thread1");
+			HANDLE hThread = UtCreate(Func2Aux, NULL, 8 * 4096, "Thread1");
 			//Waiting for hThread termination
 			//UtJoin(hThread);
 			UtYield();
@@ -33,20 +33,34 @@ namespace UthreadsTests
 		{
 			UtInit();
 			BOOL isAlive = FALSE;
-			UtCreate(Func1, &isAlive,8*4096,L"Thread1");
+			UtCreate(Func1, &isAlive,8*4096,"Thread1");
 			UtRun();
 
 			Assert::IsTrue( isAlive  == TRUE);
 			UtEnd();
+		}
+		TEST_METHOD(UtMultiJoinTest)
+		{
+			UtInit();
+			BOOL isAlive = FALSE;
+			HANDLE hMainThread = UtCreate(Func1, &isAlive, 8 * 4096, "MainThread");
+			HANDLE array[2];
+			array[0] = UtCreate(Func1, &isAlive, 8 * 4096, "WorkerThread1");
+			array[1] = UtCreate(Func1, &isAlive, 8 * 4096, "WorkerThread2");
+			UtRun();
+			UtMultiJoin(array, 2);
+			printf("Counter : %d", UtGetCount(hMainThread));
+			UtEnd();
+			getchar();
 		}
 
 		TEST_METHOD(DumpTest)
 		{
 			UtInit();
 			BOOL isAlive = TRUE;
-			UtCreate(Func1, &isAlive, 8 * 4096,L"Thread1");
-			UtCreate(Func1, &isAlive, 4 * 4096,L"Thread2");
-			UtCreate(Func1, &isAlive, 2 * 4096,L"Thread3");
+			UtCreate(Func1, &isAlive, 8 * 4096,"Thread1");
+			UtCreate(Func1, &isAlive, 4 * 4096,"Thread2");
+			UtCreate(Func1, &isAlive, 2 * 4096,"Thread3");
 			UtRun();
 			UtDump();
 			UtEnd();
@@ -56,7 +70,7 @@ namespace UthreadsTests
 		{
 			UtInit();
 			BOOL isAlive = TRUE;
-			UtCreate(Func2, &isAlive, 8 * 4096, L"Thread1");
+			UtCreate(Func2, &isAlive, 8 * 4096, "Thread1");
 			UtRun();
 
 			Assert::IsTrue(isAlive == FALSE);

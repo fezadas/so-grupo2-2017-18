@@ -105,6 +105,9 @@ UTHREAD_API
 BOOL UtJoin(HANDLE ThreadHandle);
 
 UTHREAD_API
+DWORD UtGetCount(HANDLE ThreadHandle);
+
+UTHREAD_API
 BOOL UtMultiJoin(HANDLE handle[], int size);
 
 UTHREAD_API
