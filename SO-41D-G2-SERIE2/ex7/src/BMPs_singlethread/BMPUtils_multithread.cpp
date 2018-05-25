@@ -24,7 +24,6 @@ typedef struct {
 	LIST_ENTRY fileMatchingList;  // the list for identical transformed files
 } REFIMAGE_MUTLIST_CTX, *PREFIMAGE_MUTLIST_CTX;
 
-
 typedef struct {
 	FILE_MAP refFileMap;
 	FILE_MAP flipFileMap;
@@ -32,9 +31,6 @@ typedef struct {
 	PMUTATIONS_RESULT_CTX global;
 	LPCSTR filePath;
 } WORK_ARG_UNIT, *PWORK_ARG_UNIT;
-
-
-
 
 static VOID InitGlobalCtx(PMUTATIONS_RESULT_CTX ctx, LPCSTR pathOutFiles,
 	FLIP_enum_t flipType, PLIST_ENTRY result) {
@@ -45,8 +41,7 @@ static VOID InitGlobalCtx(PMUTATIONS_RESULT_CTX ctx, LPCSTR pathOutFiles,
 	ctx->errorCode = OPER_SUCCESS; // optimistic initialization
 }
 
-static VOID InitRefImageMutListCtx(PREFIMAGE_MUTLIST_CTX ctx, PFILE_MAP refMap,
-	PMUTATIONS_RESULT_CTX global) {
+static VOID InitRefImageMutListCtx(PREFIMAGE_MUTLIST_CTX ctx, PFILE_MAP refMap, PMUTATIONS_RESULT_CTX global) {
 	ctx->refMap = refMap;
 	ctx->global = global;
 	InitializeListHead(&ctx->fileMatchingList);
@@ -87,7 +82,7 @@ BOOL ProcessTransformedFile(LPCSTR filePath, LPVOID _ctx) {
 	return TRUE;
 }
 
-DWORD WINAPI ThreadProc(_In_ LPVOID lpParameter) {
+DWORD WINAPI ThreadProc(LPVOID lpParameter) {
 	PWORK_ARG_UNIT args = (PWORK_ARG_UNIT)lpParameter;
 
 	printf("BMPUtils_singlethread.BMP_get_flip_reprodutions_of_file: \n"
@@ -95,6 +90,7 @@ DWORD WINAPI ThreadProc(_In_ LPVOID lpParameter) {
 		"\tDirectory of files to search for reprodutions = \"%s\"\n"
 		"\tFlip type = %s\n", args->filePath, args->global->pathOutFiles,
 		args->global->flipType == FLIP_VERTICALLY ? "Flip vertically" : "Flip horizontally");
+
 	// map reference file
 	if (!FileMapOpen(&args->refFileMap, args->filePath)) {
 		OperMarkError(args->global, OPER_MAP_ERROR);
@@ -107,9 +103,7 @@ DWORD WINAPI ThreadProc(_In_ LPVOID lpParameter) {
 		FileMapClose(&args->refFileMap);
 		return FALSE;
 	}
-
-
-
+	
 	// do the selected flip
 	BMP_FlipMem((PUCHAR)(args->refFileMap).hView, (PUCHAR)(args->flipFileMap).hView, args->global->flipType);
 
@@ -154,10 +148,12 @@ terminate:
 *	_ctx     - a pointer to the global operation context structure
 **/
 BOOL BMP_GetFlipsOfRefFile(LPCSTR filePath, LPVOID _ctx) {
-
 	PWORK_ARG_UNIT args = (PWORK_ARG_UNIT)malloc(sizeof(WORK_ARG_UNIT));
-	args->global = (PMUTATIONS_RESULT_CTX)_ctx;
-	args->filePath = filePath;
+	args->global = (PMUTATIONS_RESULT_CTX)malloc(sizeof(MUTATIONS_RESULT_CTX));
+	memcpy(args->global, (PMUTATIONS_RESULT_CTX)_ctx, sizeof(MUTATIONS_RESULT_CTX));
+	args->filePath = _strdup(filePath);
+	args->ctx = (PREFIMAGE_MUTLIST_CTX)malloc(sizeof(REFIMAGE_MUTLIST_CTX));
+
 	CUL_Increment(args->global->cul); // incrementar o contador consoante o numero de files de origem
 	if (!QueueUserWorkItem(ThreadProc, args, WT_EXECUTEDEFAULT)) 
 		printf("Error");
@@ -178,7 +174,7 @@ INT BMP_GetFlipsOfFilesInRefDir(LPCSTR pathRefFiles, LPCSTR pathOutFiles, FLIP_e
 	MUTATIONS_RESULT_CTX ctx;
 	InitGlobalCtx(&ctx, pathOutFiles, flipType, res);
 	(&ctx)->cul=(PCUL)malloc(sizeof(CUL));
-	CUL_Init((&ctx)->cul,0); // inicializar o sincronizador
+	CUL_Init((&ctx)->cul,1); // inicializar o sincronizador com o valor 1
 
 	// Iterate through pathRefFiles directory and sub directories
 	// invoking de processor (BMP_GetFlipsOfRefFile) for each ref file
@@ -186,5 +182,10 @@ INT BMP_GetFlipsOfFilesInRefDir(LPCSTR pathRefFiles, LPCSTR pathOutFiles, FLIP_e
 		if (!OperHasError(&ctx))
 			OperMarkError(&ctx, OPER_TRAVERSE_ERROR);
 	}
+
+	CUL_Signal((&ctx)->cul); // sinalizar fim da thread que deu o trabalho as workers
+	CUL_Wait((&ctx)->cul);
+	CUL_Destroy((&ctx)->cul);
+
 	return ctx.errorCode;
 }
