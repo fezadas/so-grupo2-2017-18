@@ -52,19 +52,18 @@ HANDLE Parent() {
 
 	*/
 	
+
 	DWORD written;
 	TCHAR cmd[250];
 	_stprintf_s(cmd, _T("Exercicio6.exe %d %d %d %d"), (DWORD)hChildRead, (DWORD)hChildWrite, (DWORD)hFatherRead, (DWORD)hFatherWrite);
-	/*
-	printf("Child Read Handle:%d\n", (DWORD)hChildRead);
-	printf("Child Write Handle:%d\n", (DWORD)hChildWrite);
-*/
-	//HANDLE hThread1 = CreateThread(NULL, 0, ReadFromConsole,
-	//	(LPVOID)hFatherWrite, CREATE_SUSPENDED, &ThreadId1);
+	
 	HANDLE hThread2 = CreateThread(NULL, 0, ReadFromPipe,
 		(LPVOID)hFatherRead, CREATE_SUSPENDED, &ThreadId2);
 
 	HANDLE child = LaunchProcess(cmd);
+
+	CloseHandle(hChildRead);
+	CloseHandle(hChildWrite);
 
 	ResumeThread(hThread2);
 	//WaitForSingleObject(hThread2, INFINITE);

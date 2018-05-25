@@ -3,7 +3,9 @@
 typedef struct CUL {
 	HANDLE Signaled;
 	HANDLE Mutex;
-	DWORD Counter; //InitialCounter;
+	HANDLE LimitSignaled;
+	DWORD Counter; //work counter
+	DWORD WorkLimit;
 } CUL, *PCUL;
 
 VOID CUL_Init(PCUL latch, DWORD value);

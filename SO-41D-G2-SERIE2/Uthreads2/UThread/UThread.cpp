@@ -287,9 +287,9 @@ VOID UtDump() {
 }
 
 BOOL UtMultiJoin(HANDLE handle[], int size) {
-	PNODE n= (PNODE)malloc(sizeof(NODE));
 	HANDLE mainThread = UtSelf();
 	for (int i = 0; i < size; i++) {
+		PNODE n = (PNODE)malloc(sizeof(NODE));
 		HANDLE h = handle[i];
 		if (h == UtSelf())
 			return false;

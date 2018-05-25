@@ -26,8 +26,8 @@ typedef struct {
 
 
 typedef struct {
-	PFILE_MAP refFileMap;
-	PFILE_MAP flipFileMap;
+	FILE_MAP refFileMap;
+	FILE_MAP flipFileMap;
 	PREFIMAGE_MUTLIST_CTX ctx;
 	PMUTATIONS_RESULT_CTX global;
 	LPCSTR filePath;
@@ -96,24 +96,24 @@ DWORD WINAPI ThreadProc(_In_ LPVOID lpParameter) {
 		"\tFlip type = %s\n", args->filePath, args->global->pathOutFiles,
 		args->global->flipType == FLIP_VERTICALLY ? "Flip vertically" : "Flip horizontally");
 	// map reference file
-	if (!FileMapOpen(args->refFileMap, args->filePath)) {
+	if (!FileMapOpen(&args->refFileMap, args->filePath)) {
 		OperMarkError(args->global, OPER_MAP_ERROR);
 		return FALSE;
 	}
 
 	// do the flip to a temprary map
-	if (!FileMapTemp(args->flipFileMap, (*args->refFileMap).mapSize)) {
+	if (!FileMapTemp(&args->flipFileMap, (args->refFileMap).mapSize)) {
 		OperMarkError(args->global, OPER_MAP_ERROR);
-		FileMapClose(args->refFileMap);
+		FileMapClose(&args->refFileMap);
 		return FALSE;
 	}
 
 
 
 	// do the selected flip
-	BMP_FlipMem((PUCHAR)(*args->refFileMap).hView, (PUCHAR)(*args->flipFileMap).hView, args->global->flipType);
+	BMP_FlipMem((PUCHAR)(args->refFileMap).hView, (PUCHAR)(args->flipFileMap).hView, args->global->flipType);
 
-	InitRefImageMutListCtx(args->ctx, args->flipFileMap, args->global);
+	InitRefImageMutListCtx(args->ctx, &args->flipFileMap, args->global);
 
 	BOOL ret = TRUE;
 
@@ -141,8 +141,8 @@ DWORD WINAPI ThreadProc(_In_ LPVOID lpParameter) {
 
 terminate:
 	// Cleanup file resources
-	FileMapClose(args->refFileMap);
-	FileMapClose(args->flipFileMap);
+	FileMapClose(&args->refFileMap);
+	FileMapClose(&args->flipFileMap);
 	return ret;
 
 
