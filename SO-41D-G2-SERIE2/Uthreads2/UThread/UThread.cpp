@@ -276,12 +276,9 @@ VOID UtActivate (HANDLE ThreadHandle) {
 
 VOID UtDump() {
 	PLIST_ENTRY curr = AliveThreads.Flink;
-	BYTE aux = 0;
 	while (curr != &AliveThreads) {
 		PUTHREAD thread = CONTAINING_RECORD(curr, UTHREAD, AliveLink);
-		DWORD usedStack = 100 - (((thread == RunningThread ?
-									(DWORD)(&aux) :
-									(DWORD)(thread->ThreadContext)) - (DWORD)thread->Stack) * 100) / STACK_SIZE;
+		DWORD usedStack = 100 - (((DWORD)thread->ThreadContext - (DWORD)thread->Stack) * 100) / STACK_SIZE;
 		const char* state = UtStateArray[thread->State];
 		printf("Handle: %p | Thread Name: %s | State: %s | Stack Ocupation: %d \n",
 			(HANDLE)thread, thread->Name, state, usedStack);
@@ -290,7 +287,7 @@ VOID UtDump() {
 }
 
 BOOL UtMultiJoin(HANDLE handle[], int size) {
-	PNODE n = (PNODE)malloc(sizeof(LIST_ENTRY)+sizeof(HANDLE));
+	PNODE n= (PNODE)malloc(sizeof(NODE));
 	HANDLE mainThread = UtSelf();
 	for (int i = 0; i < size; i++) {
 		HANDLE h = handle[i];
