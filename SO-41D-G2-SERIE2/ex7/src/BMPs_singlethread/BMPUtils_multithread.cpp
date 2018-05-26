@@ -3,10 +3,6 @@
 #include "../Include/traversedir.h"
 #include "cul.h"
 
-HANDLE thread;
-long maxNrOfThread = 6;
-long actualNrOfThreads = 0;
-
 typedef struct {
 	LPCSTR pathOutFiles;	// The root dir of transformed files
 	PLIST_ENTRY resultList;	// A list of matched reference file. 
@@ -137,10 +133,11 @@ terminate:
 	// Cleanup file resources
 	FileMapClose(&args->refFileMap);
 	FileMapClose(&args->flipFileMap);
+	free(args->global);
+	free(args);
 	return ret;
-
-
 }
+
 /*
 * Called for each found bmp in reference files dir
 * Parameters:
@@ -186,6 +183,7 @@ INT BMP_GetFlipsOfFilesInRefDir(LPCSTR pathRefFiles, LPCSTR pathOutFiles, FLIP_e
 	CUL_Signal((&ctx)->cul); // sinalizar fim da thread que deu o trabalho as workers
 	CUL_Wait((&ctx)->cul);
 	CUL_Destroy((&ctx)->cul);
+	free(ctx.cul);
 
 	return ctx.errorCode;
 }

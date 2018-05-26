@@ -18,11 +18,6 @@ HANDLE Parent() {
 	HANDLE hFatherRead, hChildWrite;
 	HANDLE hChildRead, hFatherWrite;
 
-	DWORD ThreadId1;
-	DWORD ThreadId2;
-
-	char buffer[] = "parent!\r\n";
-
 	SECURITY_ATTRIBUTES sa;
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
 	sa.bInheritHandle = TRUE;
@@ -44,27 +39,25 @@ HANDLE Parent() {
 	
 	DWORD written;
 	TCHAR cmd[250];
-	_stprintf_s(cmd, _T("Exercicio6.exe %d %d %d %d"), (DWORD)hChildRead, (DWORD)hChildWrite, (DWORD)hFatherRead, (DWORD)hFatherWrite);
+	_stprintf_s(cmd, _T("Exercicio6.exe %d %d %d %d"), 
+		(DWORD)hChildRead, (DWORD)hChildWrite, (DWORD)hFatherRead, (DWORD)hFatherWrite);
 	
-	HANDLE hThread2 = CreateThread(NULL, 0, ReadFromPipe,
-		(LPVOID)hFatherRead, CREATE_SUSPENDED, &ThreadId2);
+	DWORD threadId;
+	HANDLE hThread = CreateThread(NULL, 0, ReadFromPipe,
+		(LPVOID)hFatherRead, CREATE_SUSPENDED, &threadId);
 
 	HANDLE child = LaunchProcess(cmd);
 
 	CloseHandle(hChildRead);
 	CloseHandle(hChildWrite);
 
-	ResumeThread(hThread2);
+	ResumeThread(hThread);
 	
 	return hFatherWrite;
 }
 
 
 HANDLE Child(_TCHAR* argv[]) {
-	DWORD written;
-
-	DWORD ThreadId1;
-	DWORD ThreadId2;
 
 	HANDLE hChildRead = (HANDLE)_tstoi(argv[1]);
 	HANDLE hChildWrite = (HANDLE)_tstoi(argv[2]);
@@ -72,19 +65,21 @@ HANDLE Child(_TCHAR* argv[]) {
 	CloseHandle((HANDLE)_tstoi(argv[3]));
 	CloseHandle((HANDLE)_tstoi(argv[4]));
 
-	HANDLE hThread2 = CreateThread(NULL, 0, ReadFromPipe,
-		(LPVOID)hChildRead, CREATE_SUSPENDED, &ThreadId2);
+	DWORD threadId;
+	HANDLE hThread = CreateThread(NULL, 0, ReadFromPipe,
+		(LPVOID)hChildRead, CREATE_SUSPENDED, &threadId);
 
-	ResumeThread(hThread2);
+	ResumeThread(hThread);
 
 	return hChildWrite;
 }
 
 DWORD WINAPI ReadFromPipe(LPVOID hRead) {
+
 	CHAR read_buff[256];
 	memset(&read_buff, 0, 256);
-	DWORD nBytesRead;
-	DWORD nCharsWritten;
+
+	DWORD nBytesRead, nCharsWritten;
 
 	while (TRUE)
 	{
