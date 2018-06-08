@@ -56,17 +56,21 @@ BOOL WriteAsync(HANDLE hFile, DWORD size, POPER_CTX opCtx) {
 }
 
 
-//preparar para o processo de copia de ficheiros e fazer primeira leitura
-
+/*preparar para o processo de copia de ficheiros 
+  e fazer primeira leitura para iniciar trabalho
+  que completion port irá acabar.*/
 BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx) {
 
 	HANDLE fIn = OpenAsync(srcFile, GENERIC_READ);
-	if (fIn == NULL) return FALSE;
+	if (fIn == NULL) 
+		return FALSE;
 	HANDLE fOut = OpenAsync(dstFile, GENERIC_WRITE);
-	if (fOut == NULL) return FALSE;
+	if (fOut == NULL) 
+		return FALSE;
 	POPER_CTX opCtx = CreateOpContext(fIn, fOut, cb, userCtx);
 	if(ReadAsync(fIn, 1, opCtx))
 		return TRUE;
+
 	CloseHandle(fIn);
 	DestroyOpContext(opCtx);
 	return FALSE;
@@ -85,7 +89,7 @@ VOID ProcessRequest(POPER_CTX opCtx, DWORD transferedBytes) {
 		return;
 	}
 
-	if (opCtx->toRead) { // verificar se é para ler ou escrever
+	if (opCtx->toRead) { 
 		if (!ReadAsync(opCtx->fIn, BUFFER_SIZE, opCtx))
 			DispatchAndReleaseOper(opCtx, GetLastError(), opCtx->currPos);
 		else {
@@ -99,11 +103,9 @@ VOID ProcessRequest(POPER_CTX opCtx, DWORD transferedBytes) {
 		}
 	}
 	else
-		if(!WriteAsync(opCtx->fOut, BUFFER_SIZE, opCtx))
+		if(!WriteAsync(opCtx->fOut, transferedBytes, opCtx))
 			DispatchAndReleaseOper(opCtx, GetLastError(), opCtx->currPos);
 	opCtx->toRead = !opCtx->toRead;
-
-	
 }
 
 DWORD WINAPI IOCP_ThreadFunc(LPVOID arg) {
@@ -129,13 +131,27 @@ DWORD WINAPI IOCP_ThreadFunc(LPVOID arg) {
 	return 0;
 }
 
+static long usingInitResource, 
+			usingTerminateResource;
+
 BOOL AsyncInit() {
-	completionPort = CreateNewCompletionPort(0);
-	if (completionPort == NULL) return FALSE;
-	for (int i = 0; i < MAX_THREADS; ++i) {
-		iocpThreads[i] = CreateThread(NULL, 0, IOCP_ThreadFunc, NULL, 0, NULL);
+	
+	if (0 == InterlockedExchange(&usingInitResource, 1)) {
+		completionPort = CreateNewCompletionPort(0);
+		if (completionPort == NULL) return FALSE;
+		for (int i = 0; i < MAX_THREADS; ++i) {
+			iocpThreads[i] = CreateThread(NULL, 0, IOCP_ThreadFunc, NULL, 0, NULL);
+		}
+		return TRUE;
 	}
-	return TRUE;
 }
 
+VOID AsyncTerminate() {
+	if (0 == InterlockedExchange(&usingTerminateResource, 1)) {
 
+		CloseHandle(fIn);
+		DestroyOpContext(opCtx);
+
+		InterlockedExchange(&usingInitResource, 0);
+	}
+}

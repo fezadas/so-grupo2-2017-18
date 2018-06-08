@@ -19,10 +19,8 @@ typedef struct OperCtx {
 
 BOOL AsyncInit();
 HANDLE OpenAsync(PCSTR fName, DWORD permissions);
-BOOL ReadAsync(HANDLE hFile, DWORD toRead, POPER_CTX opCtx);
-BOOL WriteAsync(HANDLE hFile, DWORD toRead, POPER_CTX opCtx);
 BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx);
-
+VOID AsyncTerminate();
 
 POPER_CTX CreateOpContext(HANDLE fIn, HANDLE fOut, AsyncCallback cb, LPVOID userCtx);
 VOID DestroyOpContext(POPER_CTX ctx);
