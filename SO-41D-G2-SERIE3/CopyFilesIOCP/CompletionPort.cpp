@@ -2,6 +2,8 @@
 //
 
 #include "stdafx.h"
+#include "cul.h"
+#include "traversedirr.h"
 #include "CopyFilesIOCP.h"
 #include "winerror.h"
 
@@ -11,8 +13,11 @@
 static HANDLE iocpThreads[MAX_THREADS];
 static HANDLE completionPort;
 
-
-// I/O Wrapers
+typedef struct {
+	LPCSTR pathDstFiles;	
+	INT errorCode;			// 0(OPER_SUCCESS) means the operation concludes successfully
+	PCUL cul;
+} MUTATIONS_RESULT_CTX, *PMUTATIONS_RESULT_CTX;
 
 HANDLE CreateNewCompletionPort(DWORD dwNumberOfConcurrentThreads) {
 	return CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, dwNumberOfConcurrentThreads);
@@ -23,11 +28,16 @@ BOOL AssociateDeviceWithCompletionPort(HANDLE hComplPort, HANDLE hDevice, DWORD 
 	return h == hComplPort;
 }
 
-HANDLE OpenAsync(PCSTR fName, DWORD permissions) {
+HANDLE OpenAsync(bool isScrFile, PCSTR fName, DWORD permissions) {
+	int flag;
+	if (isScrFile)
+		flag = OPEN_EXISTING;
+	else
+		flag = CREATE_NEW;
 	HANDLE hFile = CreateFileA(fName, permissions,
 		FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL,
-		OPEN_EXISTING,
+		flag,
 		FILE_FLAG_OVERLAPPED,
 		NULL);
 	if (hFile == INVALID_HANDLE_VALUE) return NULL;
@@ -37,7 +47,6 @@ HANDLE OpenAsync(PCSTR fName, DWORD permissions) {
 	}
 	return hFile;
 }
-
 
 //ler de forma assincrona size bytes
 BOOL ReadAsync(HANDLE hFile, DWORD size, POPER_CTX opCtx) {
@@ -55,16 +64,33 @@ BOOL WriteAsync(HANDLE hFile, DWORD size, POPER_CTX opCtx) {
 	return TRUE;
 }
 
+VOID Callback(LPVOID ctx, DWORD status, UINT64 transferedByte) {
+	printf("Foram tranferidos %lld bytes", transferedByte);
+}
 
-/*preparar para o processo de copia de ficheiros 
-  e fazer primeira leitura para iniciar trabalho
-  que completion port irá acabar.*/
+BOOL CopyFileWrapper(LPCSTR pathFileName, LPCSTR fileName, LPVOID arg) {
+	PMUTATIONS_RESULT_CTX ctx = (PMUTATIONS_RESULT_CTX)arg;
+	char buffer[1024];
+	sprintf_s(buffer, "%s/%s", ctx->pathDstFiles, fileName);
+	AsyncInit();
+	bool res = CopyFileAsync(pathFileName, buffer, Callback, ctx);
+	AsyncTerminate();
+	return res;
+}
+
+
+
+/*
+preparar para o processo de copia de ficheiros
+e fazer primeira leitura para iniciar trabalho
+que completion port irá acabar.
+*/
 BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx) {
 
-	HANDLE fIn = OpenAsync(srcFile, GENERIC_READ);
+	HANDLE fIn = OpenAsync(true, srcFile, GENERIC_READ);
 	if (fIn == NULL) 
 		return FALSE;
-	HANDLE fOut = OpenAsync(dstFile, GENERIC_WRITE);
+	HANDLE fOut = OpenAsync(false, dstFile, GENERIC_WRITE);
 	if (fOut == NULL) 
 		return FALSE;
 	POPER_CTX opCtx = CreateOpContext(fIn, fOut, cb, userCtx);
@@ -148,10 +174,34 @@ BOOL AsyncInit() {
 
 VOID AsyncTerminate() {
 	if (0 == InterlockedExchange(&usingTerminateResource, 1)) {
-
+		/*
 		CloseHandle(fIn);
 		DestroyOpContext(opCtx);
 
 		InterlockedExchange(&usingInitResource, 0);
+		*/
 	}
+}
+
+INT CopyFolder(LPCSTR pathRefFiles, LPCSTR pathOutFiles) {
+
+	MUTATIONS_RESULT_CTX ctx;
+	ctx.pathDstFiles = pathOutFiles;
+	//ctx.errorCode = OPER_SUCCESS;
+	ctx.cul = (PCUL)malloc(sizeof(CUL));
+	CUL_Init((&ctx)->cul, 1); // inicializar o sincronizador com o valor 1
+
+	// Iterate through pathRefFiles directory and sub directories
+	// invoking de processor (BMP_GetFlipsOfRefFile) for each ref file
+	if (!TraverseDirTree(pathRefFiles, ".txt", CopyFileWrapper, &ctx)) {
+	//	if (!OperHasError(&ctx))
+	//		OperMarkError(&ctx, OPER_TRAVERSE_ERROR);
+	}
+
+	CUL_Signal((&ctx)->cul); // sinalizar fim da thread que deu o trabalho as workers
+	CUL_Wait((&ctx)->cul);
+	CUL_Destroy((&ctx)->cul);
+	free(ctx.cul);
+
+	return ctx.errorCode;
 }

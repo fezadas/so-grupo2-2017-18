@@ -5,7 +5,7 @@ extern HANDLE completionPort;
 #define BUFFER_SIZE 4096
 
 typedef struct OperCtx *POPER_CTX;
-typedef VOID(*AsyncCallback)(LPVOID userCtx, DWORD status, UINT64 transferedBytes);
+typedef VOID(*AsyncCallback)(LPVOID ctx, DWORD status, UINT64 transferedByte);
 
 typedef struct OperCtx {
 	OVERLAPPED ovr;
@@ -21,6 +21,8 @@ BOOL AsyncInit();
 HANDLE OpenAsync(PCSTR fName, DWORD permissions);
 BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx);
 VOID AsyncTerminate();
+
+INT CopyFolder(LPCSTR pathRefFiles, LPCSTR pathOutFiles);
 
 POPER_CTX CreateOpContext(HANDLE fIn, HANDLE fOut, AsyncCallback cb, LPVOID userCtx);
 VOID DestroyOpContext(POPER_CTX ctx);
