@@ -12,6 +12,7 @@
 
 static HANDLE iocpThreads[MAX_THREADS];
 static HANDLE completionPort;
+static HANDLE shutdownEvent;
 
 typedef struct {
 	LPCSTR pathDstFiles;	
@@ -24,8 +25,7 @@ HANDLE CreateNewCompletionPort(DWORD dwNumberOfConcurrentThreads) {
 }
 
 BOOL AssociateDeviceWithCompletionPort(HANDLE hComplPort, HANDLE hDevice, DWORD CompletionKey) {
-	HANDLE h = CreateIoCompletionPort(hDevice, hComplPort, CompletionKey, 0);
-	return h == hComplPort;
+	return CreateIoCompletionPort(hDevice, hComplPort, CompletionKey, 0) == hComplPort;
 }
 
 HANDLE OpenAsync(bool isScrFile, PCSTR fName, DWORD permissions) {
@@ -50,17 +50,24 @@ HANDLE OpenAsync(bool isScrFile, PCSTR fName, DWORD permissions) {
 
 //ler de forma assincrona size bytes
 BOOL ReadAsync(HANDLE hFile, DWORD size, POPER_CTX opCtx) {
+	opCtx->toRead = !opCtx->toRead;
 	if (!ReadFile(hFile, opCtx->buffer, size, NULL, &opCtx->ovr)) {
+		printf("Leitura\n");
 		return GetLastError() == ERROR_IO_PENDING;
 	}
+	printf("Leitura FORA\n");
 	return TRUE;
 }
 
 //escrever de forma assincrona size bytes
 BOOL WriteAsync(HANDLE hFile, DWORD size, POPER_CTX opCtx) {
+	opCtx->toRead = !opCtx->toRead;
 	if (!WriteFile(hFile, opCtx->buffer, size, NULL, &opCtx->ovr)) {
+		printf("Escrita \n");
 		return GetLastError() == ERROR_IO_PENDING;
+		
 	}
+	printf("Escrita FORA \n");
 	return TRUE;
 }
 
@@ -70,15 +77,13 @@ VOID Callback(LPVOID ctx, DWORD status, UINT64 transferedByte) {
 
 BOOL CopyFileWrapper(LPCSTR pathFileName, LPCSTR fileName, LPVOID arg) {
 	PMUTATIONS_RESULT_CTX ctx = (PMUTATIONS_RESULT_CTX)arg;
+	//CUL_Increment(ctx->cul);
 	char buffer[1024];
 	sprintf_s(buffer, "%s/%s", ctx->pathDstFiles, fileName);
-	AsyncInit();
 	bool res = CopyFileAsync(pathFileName, buffer, Callback, ctx);
-	AsyncTerminate();
+	//CUL_Signal(ctx->cul);
 	return res;
 }
-
-
 
 /*
 preparar para o processo de copia de ficheiros
@@ -94,7 +99,7 @@ BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCt
 	if (fOut == NULL) 
 		return FALSE;
 	POPER_CTX opCtx = CreateOpContext(fIn, fOut, cb, userCtx);
-	if(ReadAsync(fIn, 1, opCtx))
+	if(ReadAsync(fIn, BUFFER_SIZE, opCtx))
 		return TRUE;
 
 	CloseHandle(fIn);
@@ -115,8 +120,12 @@ VOID ProcessRequest(POPER_CTX opCtx, DWORD transferedBytes) {
 		return;
 	}
 
-	if (opCtx->toRead) { 
+	if (opCtx->toRead) {
 		if (!ReadAsync(opCtx->fIn, BUFFER_SIZE, opCtx))
+			DispatchAndReleaseOper(opCtx, GetLastError(), opCtx->currPos);
+	}
+	else {
+		if (!WriteAsync(opCtx->fOut, transferedBytes, opCtx))
 			DispatchAndReleaseOper(opCtx, GetLastError(), opCtx->currPos);
 		else {
 			// adjust current read position
@@ -128,21 +137,21 @@ VOID ProcessRequest(POPER_CTX opCtx, DWORD transferedBytes) {
 			opCtx->ovr.OffsetHigh = li.HighPart;
 		}
 	}
-	else
-		if(!WriteAsync(opCtx->fOut, transferedBytes, opCtx))
-			DispatchAndReleaseOper(opCtx, GetLastError(), opCtx->currPos);
-	opCtx->toRead = !opCtx->toRead;
+}
+
+
+BOOL isToShutdown() {
+	return WAIT_OBJECT_0 == WaitForSingleObject(shutdownEvent, 0);
 }
 
 DWORD WINAPI IOCP_ThreadFunc(LPVOID arg) {
 	DWORD transferedBytes;
 	ULONG_PTR completionKey;
 	POPER_CTX opCtx;
-
+	/*BOOL a = isToShutdown();*/
 	while (TRUE) {
 		BOOL res = GetQueuedCompletionStatus(completionPort,
 			&transferedBytes, &completionKey, (LPOVERLAPPED *)&opCtx, INFINITE);
-
 		if (!res) {
 			transferedBytes = 0;
 			DWORD error = GetLastError();
@@ -157,13 +166,13 @@ DWORD WINAPI IOCP_ThreadFunc(LPVOID arg) {
 	return 0;
 }
 
-static long usingInitResource, 
-			usingTerminateResource;
+static long usingInitResource, usingTerminateResource;
 
 BOOL AsyncInit() {
 	
 	if (0 == InterlockedExchange(&usingInitResource, 1)) {
 		completionPort = CreateNewCompletionPort(0);
+
 		if (completionPort == NULL) return FALSE;
 		for (int i = 0; i < MAX_THREADS; ++i) {
 			iocpThreads[i] = CreateThread(NULL, 0, IOCP_ThreadFunc, NULL, 0, NULL);
@@ -174,12 +183,15 @@ BOOL AsyncInit() {
 
 VOID AsyncTerminate() {
 	if (0 == InterlockedExchange(&usingTerminateResource, 1)) {
-		/*
-		CloseHandle(fIn);
-		DestroyOpContext(opCtx);
+		////Start to shutdown
+		//SetEvent(shutdownEvent);
 
-		InterlockedExchange(&usingInitResource, 0);
-		*/
+		////Activate threads
+		//for (int i = 0; i < MAX_THREADS; i++)
+		//	PostQueuedCompletionStatus(completionPort, 0,(DWORD)NULL, NULL); 
+
+		////Wait for all threads
+		//WaitForMultipleObjects(MAX_THREADS, iocpThreads, TRUE, INFINITE);
 	}
 }
 
@@ -190,12 +202,11 @@ INT CopyFolder(LPCSTR pathRefFiles, LPCSTR pathOutFiles) {
 	//ctx.errorCode = OPER_SUCCESS;
 	ctx.cul = (PCUL)malloc(sizeof(CUL));
 	CUL_Init((&ctx)->cul, 1); // inicializar o sincronizador com o valor 1
-
 	// Iterate through pathRefFiles directory and sub directories
 	// invoking de processor (BMP_GetFlipsOfRefFile) for each ref file
 	if (!TraverseDirTree(pathRefFiles, ".txt", CopyFileWrapper, &ctx)) {
-	//	if (!OperHasError(&ctx))
-	//		OperMarkError(&ctx, OPER_TRAVERSE_ERROR);
+		//if (!OperHasError(&ctx))
+		//	OperMarkError(&ctx, OPER_TRAVERSE_ERROR);
 	}
 
 	CUL_Signal((&ctx)->cul); // sinalizar fim da thread que deu o trabalho as workers

@@ -30,8 +30,9 @@ BOOL TraverseDirTree(LPCSTR dir, LPCSTR extension, ACTION  action, LPVOID arg) {
 								// a priori selection for all files
 	sprintf_s(buffer, "%s\\%s", dir, "*.*");
 
-	WIN32_FIND_DATA fileData;
-	HANDLE fileIter = FindFirstFile(buffer, &fileData);
+	WIN32_FIND_DATAA fileData;
+
+	HANDLE fileIter = FindFirstFileA(buffer, &fileData);
 	if (fileIter == INVALID_HANDLE_VALUE) return FALSE;
 
 	// Iterate through current directory and sub directories
@@ -49,7 +50,7 @@ BOOL TraverseDirTree(LPCSTR dir, LPCSTR extension, ACTION  action, LPVOID arg) {
 			if (hasExtension(buffer, extension))
 				if (!action(buffer, fileData.cFileName, arg)) break;
 		}
-	} while (FindNextFile(fileIter, &fileData) == TRUE);
+	} while (FindNextFileA(fileIter, &fileData) == TRUE);
 
 	FindClose(fileIter);
 	return TRUE;
