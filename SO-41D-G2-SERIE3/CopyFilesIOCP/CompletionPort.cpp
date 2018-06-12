@@ -52,10 +52,10 @@ HANDLE OpenAsync(bool isScrFile, PCSTR fName, DWORD permissions) {
 BOOL ReadAsync(HANDLE hFile, DWORD size, POPER_CTX opCtx) {
 	opCtx->toRead = !opCtx->toRead;
 	if (!ReadFile(hFile, opCtx->buffer, size, NULL, &opCtx->ovr)) {
-		printf("Leitura\n");
+		//printf("Leitura\n");
 		return GetLastError() == ERROR_IO_PENDING;
 	}
-	printf("Leitura FORA\n");
+	//printf("Leitura FORA\n");
 	return TRUE;
 }
 
@@ -63,11 +63,11 @@ BOOL ReadAsync(HANDLE hFile, DWORD size, POPER_CTX opCtx) {
 BOOL WriteAsync(HANDLE hFile, DWORD size, POPER_CTX opCtx) {
 	opCtx->toRead = !opCtx->toRead;
 	if (!WriteFile(hFile, opCtx->buffer, size, NULL, &opCtx->ovr)) {
-		printf("Escrita \n");
+		//printf("Escrita \n");
 		return GetLastError() == ERROR_IO_PENDING;
 		
 	}
-	printf("Escrita FORA \n");
+	//printf("Escrita FORA \n");
 	return TRUE;
 }
 
@@ -140,15 +140,15 @@ VOID ProcessRequest(POPER_CTX opCtx, DWORD transferedBytes) {
 }
 
 
-BOOL isToShutdown() {
-	return WAIT_OBJECT_0 == WaitForSingleObject(shutdownEvent, 0);
-}
+//BOOL isToShutdown() {
+//	return WAIT_OBJECT_0 == WaitForSingleObject(shutdownEvent, 0);
+//}
 
 DWORD WINAPI IOCP_ThreadFunc(LPVOID arg) {
 	DWORD transferedBytes;
 	ULONG_PTR completionKey;
 	POPER_CTX opCtx;
-	/*BOOL a = isToShutdown();*/
+	//BOOL a = isToShutdown();
 	while (TRUE) {
 		BOOL res = GetQueuedCompletionStatus(completionPort,
 			&transferedBytes, &completionKey, (LPOVERLAPPED *)&opCtx, INFINITE);
@@ -172,6 +172,7 @@ BOOL AsyncInit() {
 	
 	if (0 == InterlockedExchange(&usingInitResource, 1)) {
 		completionPort = CreateNewCompletionPort(0);
+		/*shutdownEvent = CreateEvent(NULL, FALSE, FALSE, NULL);*/
 
 		if (completionPort == NULL) return FALSE;
 		for (int i = 0; i < MAX_THREADS; ++i) {
@@ -189,7 +190,6 @@ VOID AsyncTerminate() {
 		////Activate threads
 		//for (int i = 0; i < MAX_THREADS; i++)
 		//	PostQueuedCompletionStatus(completionPort, 0,(DWORD)NULL, NULL); 
-
 		////Wait for all threads
 		//WaitForMultipleObjects(MAX_THREADS, iocpThreads, TRUE, INFINITE);
 	}
