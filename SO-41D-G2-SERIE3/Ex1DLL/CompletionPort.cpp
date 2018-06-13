@@ -17,13 +17,6 @@ static HANDLE shutdownEvent;
 POPER_CTX CreateOpContext(HANDLE fIn, HANDLE fOut, AsyncCallback cb, LPVOID userCtx);
 VOID DestroyOpContext(POPER_CTX ctx);
 
-typedef struct {
-	LPCSTR pathDstFiles;
-	INT errorCode;			// 0(OPER_SUCCESS) means the operation concludes successfully
-	CUL cul;
-	AsyncCallback cb;
-} MUTATIONS_RESULT_CTX, *PMUTATIONS_RESULT_CTX;
-
 HANDLE CreateNewCompletionPort(DWORD dwNumberOfConcurrentThreads) {
 	return CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, dwNumberOfConcurrentThreads);
 }
@@ -32,12 +25,11 @@ BOOL AssociateDeviceWithCompletionPort(HANDLE hComplPort, HANDLE hDevice, DWORD 
 	return CreateIoCompletionPort(hDevice, hComplPort, CompletionKey, 0) == hComplPort;
 }
 
-HANDLE OpenAsync(PCSTR fName, DWORD permissions) {
-	int flag;
+HANDLE OpenAsync(PCSTR fName, DWORD permissions, DWORD flags) {
 	HANDLE hFile = CreateFileA(fName, permissions,
 		FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL,
-		OPEN_EXISTING | CREATE_NEW,
+		flags,
 		FILE_FLAG_OVERLAPPED,
 		NULL);
 	if (hFile == INVALID_HANDLE_VALUE) return NULL;
@@ -88,12 +80,15 @@ que completion port irá acabar.
 */
 BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx) {
 
-	HANDLE fIn = OpenAsync(srcFile, GENERIC_READ);
+	HANDLE fIn = OpenAsync(srcFile, GENERIC_READ, OPEN_EXISTING);
 	if (fIn == NULL)
 		return FALSE;
-	HANDLE fOut = OpenAsync(dstFile, GENERIC_WRITE);
-	if (fOut == NULL)
-		return FALSE;
+	HANDLE fOut = OpenAsync(dstFile, GENERIC_WRITE, OPEN_EXISTING);
+	if (fOut == NULL) {
+		fOut = OpenAsync(dstFile, GENERIC_WRITE, CREATE_NEW);
+		if (fOut == NULL)
+			return FALSE;
+	}
 	POPER_CTX opCtx = CreateOpContext(fIn, fOut, cb, userCtx);
 	if (ReadAsync(fIn, BUFFER_SIZE, opCtx))
 		return TRUE;
@@ -101,6 +96,18 @@ BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCt
 	CloseHandle(fIn);
 	DestroyOpContext(opCtx);
 	return FALSE;
+}
+
+BOOL CopyFileAsyncWrapper(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb) {
+	MUTATIONS_RESULT_CTX ctx;
+	ctx.pathDstFiles = dstFile;
+	ctx.cb = cb;
+	CUL_Init(&ctx.cul, 1);
+	BOOL res = CopyFileAsync(srcFile, dstFile, cb, &ctx);
+	CUL_Signal(&ctx.cul);
+	CUL_Wait(&ctx.cul);
+	CUL_Destroy(&ctx.cul);
+	return res;
 }
 
 //quando é para despachar a conclusão da cópia

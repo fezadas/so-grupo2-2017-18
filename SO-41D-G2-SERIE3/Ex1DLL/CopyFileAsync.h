@@ -13,6 +13,7 @@ extern "C" {
 #include <tchar.h>
 #include <psapi.h>
 #include <winnt.h>
+#include "CUL.h"
 
 	extern HANDLE completionPort;
 
@@ -39,5 +40,14 @@ extern "C" {
 
 	CopyFileAsyncc BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx);
 
+	CopyFileAsyncc BOOL CopyFileAsyncWrapper(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb);
+
 	CopyFileAsyncc INT CopyFolder(LPCSTR pathRefFiles, LPCSTR pathOutFiles, AsyncCallback cb);
+
+	typedef struct {
+		LPCSTR pathDstFiles;
+		INT errorCode;			// 0(OPER_SUCCESS) means the operation concludes successfully
+		CUL cul;
+		AsyncCallback cb;
+	} MUTATIONS_RESULT_CTX, *PMUTATIONS_RESULT_CTX;
 }
