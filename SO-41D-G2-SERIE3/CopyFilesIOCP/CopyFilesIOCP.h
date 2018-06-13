@@ -20,11 +20,9 @@ typedef struct OperCtx {
 } OPER_CTX, *POPER_CTX;
 
 BOOL AsyncInit();
-BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx);
-VOID ProcessRequest(POPER_CTX opCtx, DWORD transferedBytes);
 VOID AsyncTerminate();
-
-INT CopyFolder(LPCSTR pathRefFiles, LPCSTR pathOutFiles);
+BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx);
+INT CopyFolder(LPCSTR pathRefFiles, LPCSTR pathOutFiles, AsyncCallback cb);
 
 POPER_CTX CreateOpContext(HANDLE fIn, HANDLE fOut, AsyncCallback cb, LPVOID userCtx);
 VOID DestroyOpContext(POPER_CTX ctx);
