@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CopyFilesIOCP", "CopyFilesIOCP\CopyFilesIOCP.vcxproj", "{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ex1DLL", "Ex1DLL\Ex1DLL.vcxproj", "{F7F0BE0C-131F-4E1B-ADFF-F26EF667AFC6}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ex1CLIENT", "Ex1CLIENT\Ex1CLIENT.vcxproj", "{A1138A31-26A6-4738-AABF-D9914CFFE17C}"
@@ -17,14 +15,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}.Debug|x64.ActiveCfg = Debug|x64
-		{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}.Debug|x64.Build.0 = Debug|x64
-		{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}.Debug|x86.ActiveCfg = Debug|Win32
-		{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}.Debug|x86.Build.0 = Debug|Win32
-		{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}.Release|x64.ActiveCfg = Release|x64
-		{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}.Release|x64.Build.0 = Release|x64
-		{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}.Release|x86.ActiveCfg = Release|Win32
-		{73BF42B9-DAD3-41F8-A2F6-D70D0E63458C}.Release|x86.Build.0 = Release|Win32
 		{F7F0BE0C-131F-4E1B-ADFF-F26EF667AFC6}.Debug|x64.ActiveCfg = Debug|x64
 		{F7F0BE0C-131F-4E1B-ADFF-F26EF667AFC6}.Debug|x64.Build.0 = Debug|x64
 		{F7F0BE0C-131F-4E1B-ADFF-F26EF667AFC6}.Debug|x86.ActiveCfg = Debug|Win32

@@ -23,17 +23,18 @@ static BOOL hasExtension(LPCSTR fileName, LPCSTR extension) {
 *		arg			- the argument passed to action
 *		extension   - the filter to select files to process (ex: ".bmp")
 **/
-BOOL TraverseDirTree(LPCSTR dir, LPCSTR extension, ACTION  action, LPVOID arg) {
+INT TraverseDirTree(LPCSTR dir, LPCSTR extension, ACTION  action, LPVOID arg) {
 
 	CHAR buffer[MAX_PATH];		// auxiliary buffer
 								// the buffer is needed to define a match string that guarantees 
 								// a priori selection for all files
 	sprintf_s(buffer, "%s\\%s", dir, "*.*");
+	INT count=0;
 
 	WIN32_FIND_DATAA fileData;
 
 	HANDLE fileIter = FindFirstFileA(buffer, &fileData);
-	if (fileIter == INVALID_HANDLE_VALUE) return FALSE;
+	if (fileIter == INVALID_HANDLE_VALUE) return -1;
 
 	// Iterate through current directory and sub directories
 	do {
@@ -48,10 +49,14 @@ BOOL TraverseDirTree(LPCSTR dir, LPCSTR extension, ACTION  action, LPVOID arg) {
 		else {
 			// Process only  archives with selected extension
 			if (hasExtension(buffer, extension))
-				if (!action(buffer, fileData.cFileName, arg)) break;
+				if (!action(buffer, fileData.cFileName, arg)) {
+					count++;
+					break;
+				}
+				
 		}
 	} while (FindNextFileA(fileIter, &fileData) == TRUE);
 
 	FindClose(fileIter);
-	return TRUE;
+	return count;
 }

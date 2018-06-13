@@ -8,7 +8,7 @@
 #include "winerror.h"
 
 #define STATUS_OK 0
-#define MAX_THREADS 1
+#define MAX_THREADS 4
 
 static HANDLE iocpThreads[MAX_THREADS];
 static HANDLE completionPort;
@@ -32,16 +32,12 @@ BOOL AssociateDeviceWithCompletionPort(HANDLE hComplPort, HANDLE hDevice, DWORD 
 	return CreateIoCompletionPort(hDevice, hComplPort, CompletionKey, 0) == hComplPort;
 }
 
-HANDLE OpenAsync(bool isScrFile, PCSTR fName, DWORD permissions) {
+HANDLE OpenAsync(PCSTR fName, DWORD permissions) {
 	int flag;
-	if (isScrFile)
-		flag = OPEN_EXISTING;
-	else
-		flag = CREATE_NEW;
 	HANDLE hFile = CreateFileA(fName, permissions,
 		FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL,
-		flag,
+		OPEN_EXISTING | CREATE_NEW,
 		FILE_FLAG_OVERLAPPED,
 		NULL);
 	if (hFile == INVALID_HANDLE_VALUE) return NULL;
@@ -92,10 +88,10 @@ que completion port irá acabar.
 */
 BOOL CopyFileAsync(PCSTR srcFile, PCSTR dstFile, AsyncCallback cb, LPVOID userCtx) {
 
-	HANDLE fIn = OpenAsync(true, srcFile, GENERIC_READ);
+	HANDLE fIn = OpenAsync(srcFile, GENERIC_READ);
 	if (fIn == NULL)
 		return FALSE;
-	HANDLE fOut = OpenAsync(false, dstFile, GENERIC_WRITE);
+	HANDLE fOut = OpenAsync(dstFile, GENERIC_WRITE);
 	if (fOut == NULL)
 		return FALSE;
 	POPER_CTX opCtx = CreateOpContext(fIn, fOut, cb, userCtx);
@@ -203,13 +199,13 @@ INT CopyFolder(LPCSTR pathRefFiles, LPCSTR pathOutFiles, AsyncCallback cb) {
 	CUL_Init(&ctx.cul, 1); // inicializar o sincronizador com o valor 1
 						   // Iterate through pathRefFiles directory and sub directories
 						   // invoking de processor (BMP_GetFlipsOfRefFile) for each ref file
-	TraverseDirTree(pathRefFiles, ".txt", CopyFileWrapper, &ctx);
+	INT errors = TraverseDirTree(pathRefFiles, ".txt", CopyFileWrapper, &ctx);
 
 	CUL_Signal(&ctx.cul); // sinalizar fim da thread que deu o trabalho as workers
 	CUL_Wait(&ctx.cul);
 	CUL_Destroy(&ctx.cul);
 
-	return ctx.errorCode;
+	return errors;
 }
 
 POPER_CTX CreateOpContext(HANDLE fIn, HANDLE fOut, AsyncCallback cb, LPVOID userCtx) {
